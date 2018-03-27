@@ -29,8 +29,128 @@ def read_data(path):
   with h5py.File(path, 'r') as hf:
     data = np.array(hf.get('data'))
     label = np.array(hf.get('label'))
+    print("Data opened from: ", path)
     return data, label
 
+def normalization_data_01(data):
+    """
+    data normalization in 0 till 1 range
+    :param data:
+    :return:
+    """
+    if not (len(data.shape)<=3):
+        n_imgs = data.shape[0]
+        data = np.float32(data)
+        if data.shape[-1]==3:
+            for i in range(n_imgs):
+                # R = data[i,:,:,0]
+                img = data[i,:,:,:]
+                data[i,:,:,:] = ((img - np.min(img))*1)/(np.max(img)-np.min(img))
+
+        elif data.shape[-1]==4:
+            for i in range(n_imgs):
+                img = data[i,:,:,:]
+                data[i,:,:,:] = ((img - np.min(img))*1)/(np.max(img)-np.min(img))
+
+        elif data.shape[-1]==3 and len(data.shape)==3:
+            for i in range(n_imgs):
+                # R = data[i,:,:,0]
+                # G = data[i,:,:,1]
+                # B = data[i,:,:,2]
+                data = ((data-np.min(data))*1/(np.max(data)-np.min(data)))
+                # data[:,:,0]= ((R-np.min(R))*1/(np.max(R)-np.min(R)))
+                # data[:, :, 1] = ((G - np.min(G)) * 1 / (np.max(G) - np.min(G)))
+                # data[:, :, 2] = ((B - np.min(B)) * 1 / (np.max(B) - np.min(B)))
+
+        elif data.shape[-1]==2:
+            for i in range(n_imgs):
+                im = data[i,:,:,0]
+                N = data[i,:,:,-1]
+                data[i,:,:,0]= ((im-np.min(im))*1/(np.max(im)-np.min(im)))
+                data[i, :, :, -1] = ((N - np.min(N)) * 1 / (np.max(N) - np.min(N)))
+            del im, N
+
+        elif data.shape[-1]==1 or len(data.shape)==3:
+            if not len(data.shape)==3:
+                for i in range(n_imgs):
+                    img = data[i, :, :, 0]
+
+                    data[i, :, :, 0] = ((img - np.min(img)) * 1 / (np.max(img) - np.min(img)))
+
+                del img
+            else:
+                for i in range(n_imgs):
+                    img = data[i, :, :]
+
+                    data[i, :, :] = ((img - np.min(img)) * 1 / (np.max(img) - np.min(img)))
+                print("the sahpe of data is only 3 instead of 4 ", data.shape)
+                del img
+
+        print("Data normalized with:", data.shape[-1], "channels")
+        return data
+
+    else:
+        data = ((data - np.min(data)) * 1 / (np.max(data) - np.min(data)))
+        return data
+
+def normalization_data_0255(data):
+    """
+    data normalization in 0 till 1 range
+    :param data:
+    :return:
+    """
+    if not len(data.shape)==2:
+        n_imgs = data.shape[0]
+        # data = np.float32(data)
+        if data.shape[-1]==3 and len(data.shape)==3:
+            # for i in range(n_imgs):
+                #
+                # R = data[i,:,:,0]
+                # G = data[i,:,:,1]
+                # B = data[i,:,:,2]
+                # data[i,:,:,0]= ((R-np.min(R))*255/(np.max(R)-np.min(R)))
+                # data[i, :, :, 1] = ((G - np.min(G)) * 255 / (np.max(G) - np.min(G)))
+            data = ((data - np.min(data)) * 255 / (np.max(data) - np.min(data)))
+            # data = ((data - np.min(data)) * 254 / (np.max(data) - np.min(data)))+1
+
+        elif data.shape[-1]==3 and len(data.shape)==4:
+            for i in range(n_imgs):
+                # R = data[i,:,:,0]
+                # G = data[i,:,:,1]
+                # B = data[i,:,:,2]
+                # N = data[i,:,:,3]
+                # data[i,:,:,0]= ((R-np.min(R))*255/(np.max(R)-np.min(R)))
+                # data[i, :, :, 1] = ((G - np.min(G)) * 255 / (np.max(G) - np.min(G)))
+                # data[i, :, :, 2] = ((B - np.min(B)) * 255 / (np.max(B) - np.min(B)))
+                # data[i, :, :, 3] = ((N - np.min(N)) * 255 / (np.max(N) - np.min(N)))
+                img = data[i,...]
+                data[i,:,:,:] = ((img - np.min(img)) * 255 / (np.max(img) - np.min(img)))
+        # print("Data normalized with:", data.shape[-1], "channels")
+        return data
+
+    elif data.shape[-1]==3 and len(data.shape)==3:
+        # R = data[:, :, 0]
+        # G = data[:, :, 1]
+        # B = data[:, :, 2]
+        # data[:, :, 0] = ((R-np.min(R))*255/(np.max(R)-np.min(R)))
+        # data[:, :, 1] = ((G - np.min(G)) * 255 / (np.max(G) - np.min(G)))
+        # data[:, :, 2] = ((B - np.min(B)) * 255 / (np.max(B) - np.min(B)))
+        data = ((data - np.min(data)) * 255 / (np.max(data) - np.min(data)))
+        return data
+    elif len(data.shape)==2:
+        data = ((data-np.min(data))*255/(np.max(data)-np.min(data)))
+        return data
+
+
+def save_variable_h5(savepath, data):
+
+    with h5py.File(savepath, 'w') as hf:
+        hf.create_dataset('data', data=data)
+
+        print("Data [", data.shape, "] saved in: ", savepath)
+
+#  end of my code
+# -----------------------------------------------------------------------------------
 def preprocess(path, scale=3):
   """
   Preprocess single image file 
@@ -131,7 +251,7 @@ def input_setup(sess, config):
   padding = abs(config.image_size - config.label_size) / 2 # 6
 
   if config.is_train:
-    for i in xrange(len(data)):
+    for i in range(len(data)):
       input_, label_ = preprocess(data[i], config.scale)
 
       if len(input_.shape) == 3:

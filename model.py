@@ -1,6 +1,9 @@
 from utils import (
   read_data, 
-  input_setup, 
+  input_setup,
+  normalization_data_01,
+normalization_data_0255,
+save_variable_h5,
   imsave,
   merge
 )
@@ -58,17 +61,36 @@ class SRCNN(object):
     self.saver = tf.train.Saver()
 
   def train(self, config):
-    if config.is_train:
-      input_setup(self.sess, config)
-    else:
-      nx, ny = input_setup(self.sess, config)
+    # if config.is_train:
+    #   input_setup(self.sess, config)
+    # else:
+    #   nx, ny = input_setup(self.sess, config)
 
-    if config.is_train:     
-      data_dir = os.path.join('./{}'.format(config.checkpoint_dir), "train.h5")
+    if config.is_train:
+
+      data_dir = os.path.join("../nir_cleaner/dataset", "OMSIV_train_192.h5")
     else:
-      data_dir = os.path.join('./{}'.format(config.checkpoint_dir), "test.h5")
+
+      data_dir = data_dir = os.path.join("../nir_cleaner/dataset", "OMSIV_test_192.h5")
+
 
     train_data, train_label = read_data(data_dir)
+    train_data = normalization_data_01(train_data)
+    train_label= normalization_data_01(train_label)
+    if not config.is_train:
+      nx, ny = read_data(data_dir)
+
+    # Deleting nir channel
+    x_train = train_data[:12371, :, :, 0:3]  # ...,:,[0, -1]]
+    x_val = train_data[12371:-1, :, :, 0:3]
+    y_val = train_label[12371:-1, ...]
+    y_train = train_label[:12371, ...]
+    del train_data, train_label
+    print("data for the model:")
+    print("x for train: ", x_train.shape)
+    print("x for validation: ", x_val.shape)
+    print("y for training : ", y_train.shape)
+    print("y for validation : ", y_val.shape)
 
     # Stochastic gradient descent with the standard backpropagation
     self.train_op = tf.train.GradientDescentOptimizer(config.learning_rate).minimize(self.loss)
@@ -78,6 +100,8 @@ class SRCNN(object):
     counter = 0
     start_time = time.time()
 
+    L=[]
+
     if self.load(self.checkpoint_dir):
       print(" [*] Load SUCCESS")
     else:
@@ -86,22 +110,45 @@ class SRCNN(object):
     if config.is_train:
       print("Training...")
 
-      for ep in xrange(config.epoch):
+      for ep in range(config.epoch):
         # Run by batch images
-        batch_idxs = len(train_data) // config.batch_size
-        for idx in xrange(0, batch_idxs):
-          batch_images = train_data[idx*config.batch_size : (idx+1)*config.batch_size]
-          batch_labels = train_label[idx*config.batch_size : (idx+1)*config.batch_size]
+        batch_idxs = len(x_train) // config.batch_size
+        for idx in range(0, batch_idxs):
+          batch_images = x_train[idx*config.batch_size : (idx+1)*config.batch_size]
+          batch_labels = y_train[idx*config.batch_size : (idx+1)*config.batch_size]
 
           counter += 1
-          _, err = self.sess.run([self.train_op, self.loss], feed_dict={self.images: batch_images, self.labels: batch_labels})
+          _, err,y_hat, y = self.sess.run([self.train_op, self.loss, self.pred, self.labels], feed_dict={self.images: batch_images, self.labels: batch_labels})
 
-          if counter % 10 == 0:
-            print("Epoch: [%2d], step: [%2d], time: [%4.4f], loss: [%.8f]" \
-              % ((ep+1), counter, time.time()-start_time, err))
+          y_hat = y_hat[0,...]
+          y = y[0,...]
 
-          if counter % 500 == 0:
+          # if counter % 200 == 0:
+          #
+          #   print("Epoch: [%2d], step: [%2d], time: [%4.4f], loss: [%.8f]" \
+          #     % ((ep+1), counter, time.time()-start_time, err))
+
+
+          if ep % 100 == 0:
+
             self.save(config.checkpoint_dir, counter)
+
+        # for each epoch
+        print("Epoch: [%2d], step: [%2d], time: [%4.4f], loss: [%.8f]" \
+              % ((ep + 1), counter, time.time() - start_time, err))
+        y_hat = normalization_data_01(y_hat)
+        y = normalization_data_01(y)
+        tmp_im = np.concatenate((normalization_data_0255(y_hat ** 0.4040),
+                                 normalization_data_0255(y ** 0.4040)))
+        # plt.clear()
+        plt.title("In Epoch:" + str(ep + 1))
+        plt.imshow(np.uint8(tmp_im))
+
+        plt.draw()
+        plt.pause(0.0001)
+        path_loss = 'result/' + 'srcnn_loss.h5'
+        L.append(err)
+        save_variable_h5(path_loss, L)
 
     else:
       print("Testing...")
@@ -115,9 +162,9 @@ class SRCNN(object):
       imsave(result, image_path)
 
   def model(self):
-    conv1 = tf.nn.relu(tf.nn.conv2d(self.images, self.weights['w1'], strides=[1,1,1,1], padding='VALID') + self.biases['b1'])
-    conv2 = tf.nn.relu(tf.nn.conv2d(conv1, self.weights['w2'], strides=[1,1,1,1], padding='VALID') + self.biases['b2'])
-    conv3 = tf.nn.conv2d(conv2, self.weights['w3'], strides=[1,1,1,1], padding='VALID') + self.biases['b3']
+    conv1 = tf.nn.relu(tf.nn.conv2d(self.images, self.weights['w1'], strides=[1,1,1,1], padding='SAME') + self.biases['b1'])
+    conv2 = tf.nn.relu(tf.nn.conv2d(conv1, self.weights['w2'], strides=[1,1,1,1], padding='SAME') + self.biases['b2'])
+    conv3 = tf.nn.conv2d(conv2, self.weights['w3'], strides=[1,1,1,1], padding='SAME') + self.biases['b3']
     return conv3
 
   def save(self, checkpoint_dir, step):
