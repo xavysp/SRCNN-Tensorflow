@@ -55,6 +55,11 @@ class SRCNN(object):
 
     self.pred = self.model()
 
+    self.pred = ((self.pred - tf.reduce_min(self.pred, axis=[1, 2, 3], keep_dims=True)) * 1) / (
+            tf.reduce_max(self.pred, axis=[1, 2, 3], keep_dims=True) - tf.reduce_min(self.pred,
+                                                                                      axis=[1, 2, 3],
+                                                                                      keep_dims=True))
+
     # Loss function (MSE)
     self.loss = tf.reduce_mean(tf.square(self.labels - self.pred))
 
@@ -95,8 +100,8 @@ class SRCNN(object):
     # Stochastic gradient descent with the standard backpropagation
     self.train_op = tf.train.GradientDescentOptimizer(config.learning_rate).minimize(self.loss)
 
-    tf.initialize_all_variables().run()
-    
+    # tf.initialize_all_variables().run()
+    tf. global_variables_initializer().run()
     counter = 0
     start_time = time.time()
 
@@ -123,32 +128,30 @@ class SRCNN(object):
           y_hat = y_hat[0,...]
           y = y[0,...]
 
-          # if counter % 200 == 0:
-          #
-          #   print("Epoch: [%2d], step: [%2d], time: [%4.4f], loss: [%.8f]" \
-          #     % ((ep+1), counter, time.time()-start_time, err))
+          if counter % 256 == 0:
+
+            y_hat = normalization_data_01(y_hat)
+            y = normalization_data_01(y)
+            tmp_im = np.concatenate((normalization_data_0255(y_hat ** 0.4040),
+                                     normalization_data_0255(y ** 0.4040)))
+            # plt.clear()
+            plt.title("In Epoch:" + str(ep + 1)+ " Loss: ",+ str(err))
+            plt.imshow(np.uint8(tmp_im))
+
+            plt.draw()
+            plt.pause(0.0001)
 
 
-          if ep % 100 == 0:
+          if ep+1 % 100 == 0:
 
             self.save(config.checkpoint_dir, counter)
 
         # for each epoch
         print("Epoch: [%2d], step: [%2d], time: [%4.4f], loss: [%.8f]" \
               % ((ep + 1), counter, time.time() - start_time, err))
-        y_hat = normalization_data_01(y_hat)
-        y = normalization_data_01(y)
-        tmp_im = np.concatenate((normalization_data_0255(y_hat ** 0.4040),
-                                 normalization_data_0255(y ** 0.4040)))
-        # plt.clear()
-        plt.title("In Epoch:" + str(ep + 1))
-        plt.imshow(np.uint8(tmp_im))
-
-        plt.draw()
-        plt.pause(0.0001)
         path_loss = 'result/' + 'srcnn_loss.h5'
         L.append(err)
-        save_variable_h5(path_loss, L)
+        save_variable_h5(path_loss, np.array(L))
 
     else:
       print("Testing...")
