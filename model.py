@@ -16,10 +16,10 @@ class SRCNN(object):
 
   def __init__(self, 
                sess, 
-               image_size=33,
-               label_size=21, 
+               image_size=192,
+               label_size=192,
                batch_size=128,
-               c_dim=1, 
+               c_dim=3,
                checkpoint_dir=None, 
                sample_dir=None):
 
@@ -40,14 +40,14 @@ class SRCNN(object):
     self.labels = tf.placeholder(tf.float32, [None, self.label_size, self.label_size, self.c_dim], name='labels')
     
     self.weights = {
-      'w1': tf.Variable(tf.random_normal([9, 9, 1, 64], stddev=1e-3), name='w1'),
+      'w1': tf.Variable(tf.random_normal([9, 9, 3, 64], stddev=1e-3), name='w1'),
       'w2': tf.Variable(tf.random_normal([1, 1, 64, 32], stddev=1e-3), name='w2'),
-      'w3': tf.Variable(tf.random_normal([5, 5, 32, 1], stddev=1e-3), name='w3')
+      'w3': tf.Variable(tf.random_normal([5, 5, 32, 3], stddev=1e-3), name='w3')
     }
     self.biases = {
       'b1': tf.Variable(tf.zeros([64]), name='b1'),
       'b2': tf.Variable(tf.zeros([32]), name='b2'),
-      'b3': tf.Variable(tf.zeros([1]), name='b3')
+      'b3': tf.Variable(tf.zeros([3]), name='b3')
     }
 
     self.pred = self.model()
