@@ -141,7 +141,7 @@ def normalization_data_0255(data):
         data = ((data-np.min(data))*255/(np.max(data)-np.min(data)))
         return data
 
-
+# save dataset as h5 file
 def save_variable_h5(savepath, data):
 
     with h5py.File(savepath, 'w') as hf:
