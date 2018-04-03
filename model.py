@@ -59,9 +59,16 @@ class SRCNN(object):
             tf.reduce_max(self.pred, axis=[1, 2, 3], keep_dims=True) - tf.reduce_min(self.pred,
                                                                                       axis=[1, 2, 3],
                                                                                       keep_dims=True))
+    self.pred = ((self.pred - tf.reduce_min(self.pred, axis=[1, 2, 3], keep_dims=True)) * 255) / (
+            tf.reduce_max(self.pred, axis=[1, 2, 3], keep_dims=True) - tf.reduce_min(self.pred, axis=[1, 2, 3],
+                                                                                       keep_dims=True))
+
+    self.Y = ((self.labels - tf.reduce_min(self.labels, axis=[1, 2, 3], keep_dims=True)) * 255) / (
+            tf.reduce_max(self.labels, axis=[1, 2, 3], keep_dims=True) - tf.reduce_min(self.labels, axis=[1, 2, 3],
+                                                                               keep_dims=True))
 
     # Loss function (MSE)
-    self.loss = tf.reduce_mean(tf.square(self.labels - self.pred))
+    self.loss = tf.reduce_mean(tf.square(self.Y - self.pred))
 
     self.saver = tf.train.Saver()
 
@@ -128,23 +135,24 @@ class SRCNN(object):
           y_hat = y_hat[0,...]
           y = y[0,...]
 
-          if counter % 256 == 0:
-
+          if counter % 16 == 0:
             y_hat = normalization_data_01(y_hat)
             y = normalization_data_01(y)
             tmp_im = np.concatenate((normalization_data_0255(y_hat ** 0.4040),
                                      normalization_data_0255(y ** 0.4040)))
             # plt.clear()
-            plt.title("In Epoch:" + str(ep + 1)+ " Loss: ",+ str(err))
+
+            plt.title("In Epoch:" + str(ep+1) + "Loss: "+'%.5f'%err)  # str(ep + 1)
             plt.imshow(np.uint8(tmp_im))
 
             plt.draw()
             plt.pause(0.0001)
 
 
-          if ep+1 % 100 == 0:
+        if ep % 400 == 0:
 
-            self.save(config.checkpoint_dir, counter)
+          self.save(config.checkpoint_dir, counter)
+          print("checkpint saved")
 
         # for each epoch
         print("Epoch: [%2d], step: [%2d], time: [%4.4f], loss: [%.8f]" \
