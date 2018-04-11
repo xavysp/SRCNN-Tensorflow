@@ -5,7 +5,9 @@ from utils import (
 normalization_data_0255,
 save_variable_h5,
   imsave,
-  merge
+  merge,
+ssim_psnr,
+save_results_h5
 )
 
 import time
@@ -101,13 +103,13 @@ class SRCNN(object):
         nx, ny = read_data(data_dir)
         nx = normalization_data_01(nx)
         ny = normalization_data_01(ny)
-        x = nx[:,:,0:3]
+        x = nx[:,:,:,0:3]
         del nx
         nx = x
         del x
         print("data for the model testing:")
-        print("x for testing: ", nx)
-        print("y for testing: ", ny)
+        print("x for testing: ", nx.shape)
+        print("y for testing: ", ny.shape)
 
 
     # Stochastic gradient descent with the standard backpropagation
@@ -167,16 +169,30 @@ class SRCNN(object):
         L.append(err)
         save_variable_h5(path_loss, np.array(L))
 
+
     else:
+
       print("Testing...")
+      # result = self.pred.eval({self.images: train_data, self.labels: train_label})
+      results = self.pred.eval({self.images: nx})
+      results = np.array(results)
+      nu = results.shape[0]
+      m_res = np.zeros((nx.shape[0], 4))
 
-      result = self.pred.eval({self.images: train_data, self.labels: train_label})
+      for i in range(nu):
 
-      result = merge(result, [nx, ny])
-      result = result.squeeze()
-      image_path = os.path.join(os.getcwd(), config.sample_dir)
-      image_path = os.path.join(image_path, "test_image.png")
-      imsave(result, image_path)
+        m_res[i,0] = i+1
+        m_res[i, 1], m_res[i, 2], m_res[i,3] = ssim_psnr(results[i, ...], ny[i, ...])
+      print(m_res)
+      path_result = 'result/srcnn_result.h5'
+      save_results_h5(path_result, results, ny, nx)
+      save_variable_h5('result/srcnn_quantitativeR.h5',m_res)
+
+      # result = merge(result, [nx, ny])
+      # result = result.squeeze()
+      # image_path = os.path.join(os.getcwd(), config.sample_dir)
+      # image_path = os.path.join(image_path, "test_image.png")
+      # imsave(result, image_path)
 
   def model(self):
     conv1 = tf.nn.relu(tf.nn.conv2d(self.images, self.weights['w1'], strides=[1,1,1,1], padding='SAME') + self.biases['b1'])
