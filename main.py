@@ -18,7 +18,7 @@ flags.DEFINE_integer("scale", 3, "The size of scale factor for preprocessing inp
 flags.DEFINE_integer("stride", 14, "The size of stride to apply input image [14]")
 flags.DEFINE_string("checkpoint_dir", "checkpoint", "Name of checkpoint directory [checkpoint]")
 flags.DEFINE_string("sample_dir", "sample", "Name of sample directory [sample]")
-flags.DEFINE_boolean("is_train", True, "True for training, False for testing [True]")
+flags.DEFINE_boolean("is_train", False, "True for training, False for testing [True]")
 FLAGS = flags.FLAGS
 
 pp = pprint.PrettyPrinter()

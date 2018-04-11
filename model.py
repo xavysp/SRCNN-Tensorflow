@@ -81,28 +81,34 @@ class SRCNN(object):
     if config.is_train:
 
       data_dir = os.path.join("../nir_cleaner/dataset", "OMSIV_train_192.h5")
+      train_data, train_label = read_data(data_dir)
+      train_data = normalization_data_01(train_data)
+      train_label = normalization_data_01(train_label)
+      # Deleting nir channel
+      x_train = train_data[:12371, :, :, 0:3]  # ...,:,[0, -1]]
+      x_val = train_data[12371:-1, :, :, 0:3]
+      y_val = train_label[12371:-1, ...]
+      y_train = train_label[:12371, ...]
+      del train_data, train_label
+      print("data for the model training:")
+      print("x for train: ", x_train.shape)
+      print("x for validation: ", x_val.shape)
+      print("y for training : ", y_train.shape)
+      print("y for validation : ", y_val.shape)
+
     else:
+        data_dir = os.path.join("../nir_cleaner/dataset", "OMSIV_test_192.h5")
+        nx, ny = read_data(data_dir)
+        nx = normalization_data_01(nx)
+        ny = normalization_data_01(ny)
+        x = nx[:,:,0:3]
+        del nx
+        nx = x
+        del x
+        print("data for the model testing:")
+        print("x for testing: ", nx)
+        print("y for testing: ", ny)
 
-      data_dir = data_dir = os.path.join("../nir_cleaner/dataset", "OMSIV_test_192.h5")
-
-
-    train_data, train_label = read_data(data_dir)
-    train_data = normalization_data_01(train_data)
-    train_label= normalization_data_01(train_label)
-    if not config.is_train:
-      nx, ny = read_data(data_dir)
-
-    # Deleting nir channel
-    x_train = train_data[:12371, :, :, 0:3]  # ...,:,[0, -1]]
-    x_val = train_data[12371:-1, :, :, 0:3]
-    y_val = train_label[12371:-1, ...]
-    y_train = train_label[:12371, ...]
-    del train_data, train_label
-    print("data for the model:")
-    print("x for train: ", x_train.shape)
-    print("x for validation: ", x_val.shape)
-    print("y for training : ", y_train.shape)
-    print("y for validation : ", y_val.shape)
 
     # Stochastic gradient descent with the standard backpropagation
     self.train_op = tf.train.GradientDescentOptimizer(config.learning_rate).minimize(self.loss)
